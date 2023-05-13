@@ -21,7 +21,19 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
 
     @Override public T visitStep(SmallBasicParser.StepContext ctx) { return visitChildren(ctx); }
 
-    @Override public T visitMientras(SmallBasicParser.MientrasContext ctx) { return visitChildren(ctx); }
+    @Override public T visitMientras(SmallBasicParser.MientrasContext ctx) {
+        System.out.println("While ");
+        Boolean cnd = Boolean.parseBoolean(visitExpr(ctx.expr()).toString());
+        System.out.println(cnd);
+        while (cnd){
+            int n = ctx.comandos().size();
+            for (int i = 0; i < n; i++){
+                visitComandos(ctx.comandos(i));
+            }
+            cnd = Boolean.parseBoolean(visitExpr(ctx.expr()).toString());
+        }
+        return null;
+    }
 
     @Override public T visitFuncion(SmallBasicParser.FuncionContext ctx) { return visitChildren(ctx); }
 
