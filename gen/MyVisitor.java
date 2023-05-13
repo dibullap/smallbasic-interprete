@@ -1,4 +1,7 @@
+import java.util.Iterator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     HashMap<String,Object> table = new HashMap<>();
@@ -24,13 +27,66 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
 
     @Override public T visitDeclaracion(SmallBasicParser.DeclaracionContext ctx) {
         System.out.println("Soy declaracion");
-        String name = ctx.id().getText();
+        String name = ctx.id().ID().getText();
+
+        if (ctx.id().expr().isEmpty()){
+            table.put(name, visitExpr(ctx.expr()));
+        } else {
+            Map<String, Object> dim = new LinkedHashMap<>();
+            Map<String, Object> allDim = new LinkedHashMap<>();
+            int nDim = ctx.id().expr().size();
+            String nm = visitExpr(ctx.id().expr(nDim - 1)).toString();
+            dim.put(nm, visitExpr(ctx.expr()));
+            for (int i = nDim - 2; i >= 0; i--){
+                nm = visitExpr(ctx.id().expr(i)).toString();
+                allDim.put(nm, dim);
+                dim = allDim;
+            }
+            table.put(name, allDim);
+        }
+
         System.out.println(name + " = " + ctx.expr().getText());
-        table.put(name, visitExpr(ctx.expr()));
+
         return null;
     }
 
-    @Override public T visitId(SmallBasicParser.IdContext ctx) { return visitChildren(ctx); }
+    @Override public T visitId(SmallBasicParser.IdContext ctx) {
+        Object r = table.get(ctx.ID().getText());
+        if (r != null){
+            if (!ctx.expr().isEmpty()){
+                Map<String, Object> m = (Map<String, Object>) r;
+                int n = ctx.expr().size();
+                for (int i = 0; i < n; i++){
+                    String nm = visitExpr(ctx.expr(i)).toString();
+                    Object rp = m.get(nm);
+                    if (rp != null){
+                        if (i == n - 1){
+                            return (T) rp;
+                        }else {
+                            m = (Map<String, Object>) rp;
+                        }
+                    } else {
+                        int line = ctx.ID().getSymbol().getLine();
+                        int col = ctx.ID().getSymbol().getCharPositionInLine()+1;
+
+                        System.err.printf("<%d:%d> Error semantico: La clave  \"" + nm + "\" no existe.\n", line, col);
+                        System.exit(-1);
+                        return null;
+                    }
+                }
+            } else {
+                return (T) r;
+            }
+        } else {
+            int line = ctx.ID().getSymbol().getLine();
+            int col = ctx.ID().getSymbol().getCharPositionInLine()+1;
+
+            System.err.printf("<%d:%d> Error semantico: La variable con nombre \"" + ctx.ID().getText() + "\" no fue declarada.\n", line, col);
+            System.exit(-1);
+            return null;
+        }
+        return null;
+    }
 
     @Override public T visitLlamado(SmallBasicParser.LlamadoContext ctx) { return visitChildren(ctx); }
 
@@ -45,7 +101,7 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     @Override public T visitGoto(SmallBasicParser.GotoContext ctx) { return visitChildren(ctx); }
 
     @Override public T visitExpr(SmallBasicParser.ExprContext ctx) {
-        System.out.println("E1 or: " + ctx.getText());
+        //System.out.println("E1 or: " + ctx.getText());
         if (ctx.expr() != null){
             Boolean c = null;
             Boolean a = Boolean.parseBoolean(visitExpr(ctx.expr()).toString());
@@ -60,7 +116,7 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     }
 
     @Override public T visitExpr2(SmallBasicParser.Expr2Context ctx) {
-        System.out.println("E2 and: " + ctx.getText());
+        //System.out.println("E2 and: " + ctx.getText());
         if (ctx.expr2() != null ){
             Boolean c = null;
             Boolean a = Boolean.parseBoolean(visitExpr2(ctx.expr2()).toString());
@@ -73,7 +129,7 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     }
 
     @Override public T visitExpr3(SmallBasicParser.Expr3Context ctx) {
-        System.out.println("1 E3 relops: " + ctx.getText()) ;
+        //System.out.println("1 E3 relops: " + ctx.getText()) ;
         if (ctx.RELOP() != null ){
             Object[] temp = {visitArit(ctx.arit(0)), visitArit(ctx.arit(1))};
             T[] operandos = (T[]) temp;
@@ -115,7 +171,7 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     }
 
     @Override public T visitArit(SmallBasicParser.AritContext ctx) {
-        System.out.println("A1 suma: " + ctx.getText());
+        //System.out.println("A1 suma: " + ctx.getText());
         if (ctx.arit() != null){
             boolean conc = false;
             Object[] temp = {visitArit(ctx.arit()), visitArit2(ctx.arit2())};
@@ -163,7 +219,7 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     }
 
     @Override public T visitArit2(SmallBasicParser.Arit2Context ctx) {
-        System.out.println("A2 producto: " + ctx.getText());
+        //System.out.println("A2 producto: " + ctx.getText());
         if (ctx.arit2() != null){
             Object[] temp = {visitArit2(ctx.arit2()), visitArit3(ctx.arit3())};
             T[] operandos = (T[]) temp;
@@ -200,7 +256,7 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     }
 
     @Override public T visitArit3(SmallBasicParser.Arit3Context ctx) {
-        System.out.println("A3 negativo: " + ctx.getText());
+        //System.out.println("A3 negativo: " + ctx.getText());
         if (ctx.TKN_MINUS() != null){
             T p = parseString(visitArit4(ctx.arit4()).toString() );
             if (p.toString().contains(".")){
@@ -218,7 +274,7 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     }
 
     @Override public T visitArit4(SmallBasicParser.Arit4Context ctx) {
-        System.out.println("A4 Valor: " + ctx.getText());
+        //System.out.println("A4 Valor: " + ctx.getText());
         if (ctx.NUM() != null){
             String n = ctx.NUM().getText();
             if (n.contains(".")){
@@ -231,7 +287,7 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
                 return (T) e;
             }
         } else if (ctx.TEXT() != null){
-            return (T) ctx.TEXT().getText();
+            return (T) ctx.TEXT().getText().replace("\"", "");
         } else if (ctx.VERDADERO() != null){
             Boolean b = null;
             b = true;
