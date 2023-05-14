@@ -27,6 +27,7 @@ declaracion : id '=' expr;
 
 id : ID ('['expr ']')*;
 
+
 llamado : ID '(' ')';
 
 interna : PR '.' ID '(' parametros ')';
@@ -40,10 +41,15 @@ goto : TKN_GOTO ID;
 expr : expr 'Or' expr2 
     | expr2;
 expr2 : expr2 'And' expr3 | expr3;
-expr3 : arit RELOP arit | arit;
-arit : arit OPSUM arit2 | arit2;
+expr3 : arit RELOP arit
+    |arit '=' arit
+    | arit;
+arit : arit OPSUM arit2
+    |  arit TKN_MINUS arit2
+    | arit2;
 arit2 : arit2 OPMUL arit3 | arit3;
-arit3 : TKN_MINUS arit4 | arit4;
+arit3 : TKN_MINUS arit4
+    | arit4;
 arit4 : TEXT |  NUM 
     | VERDADERO 
     | FALSO 
@@ -67,7 +73,7 @@ RELOP : '<'
     | '='
     | '<='
     | '>=' ;
-OPSUM : '+' | '-';
+OPSUM : '+';
 OPMUL : '*' | '/';
 
 TKN_FOR : 'For';
@@ -89,6 +95,8 @@ TKN_TEXTWINDOW : 'TextWindow';
 TKN_PROGRAM : 'Program';
 TKN_STACK: 'Stack';
 TKN_MINUS : '-';
+
+
 ID : [a-zA-ZÑñÁÉÍÓÚáéíóúÜüÇç]([a-zA-ZÑñÁÉÍÓÚáéíóúÜüÇç_0-9]*);
 VERDADERO : '"'([Tt][Rr][Uu][Ee])'"';
 FALSO : '"'([Ff][Aa][Ll][Ss][Ee])'"';

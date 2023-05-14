@@ -142,7 +142,9 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
 
     @Override public T visitExpr3(SmallBasicParser.Expr3Context ctx) {
         //System.out.println("1 E3 relops: " + ctx.getText()) ;
+
         if (ctx.RELOP() != null ){
+            //System.out.println("Hay relops");
             Object[] temp = {visitArit(ctx.arit(0)), visitArit(ctx.arit(1))};
             T[] operandos = (T[]) temp;
             Double[] dop = {1.0, 1.0};
@@ -177,7 +179,25 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
                     break;
             }
             return (T) ans;
-        } else {
+        } else if (ctx.getText().contains("=") && ctx.arit().size() > 1) {
+
+            Object[] temp = {visitArit(ctx.arit(0)), visitArit(ctx.arit(1))};
+            T[] operandos = (T[]) temp;
+            Double[] dop = {1.0, 1.0};
+            Integer[] iop = {1, 1};
+            for (int i = 0; i < 2; i++){
+                T p = parseString(operandos[i].toString());
+                if (p.toString().contains(".")){
+                    dop[i] = Double.parseDouble(p.toString());
+                } else {
+                    iop[i] = Integer.parseInt(p.toString());
+                }
+            }
+            Boolean ans = null;
+            ans = dop[0] * iop[0] == dop[1] * iop[1];
+            return (T) ans;
+        }else {
+            //System.out.println("Debo ir a arit");
             return visitArit(ctx.arit(0)); // Revisar indice de arit para esta regla
         }
     }
@@ -201,28 +221,25 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
                 }
             }
             String ans = null;
-            switch (ctx.OPSUM().getText()){
-                case "+":
-                    for (int i = 0; i < 2; i++){
-                        try {
-                            if (operandos[i].toString().contains(".")){
-                                dop[i] = Double.parseDouble(operandos[i].toString());
-                            } else {
-                                iop[i] = Integer.parseInt(operandos[i].toString());
-                            }
-                        } catch (Exception ex){
-                            conc = true;
+            if (ctx.OPSUM() != null){
+                for (int i = 0; i < 2; i++){
+                    try {
+                        if (operandos[i].toString().contains(".")){
+                            dop[i] = Double.parseDouble(operandos[i].toString());
+                        } else {
+                            iop[i] = Integer.parseInt(operandos[i].toString());
                         }
+                    } catch (Exception ex){
+                        conc = true;
                     }
-                    if (conc){
-                        ans = (operandos[0].toString() + operandos[1].toString());
-                    } else {
-                        ans = (dop[0] + iop[0] + dop[1] + iop[1]) + "";
-                    }
-                    break;
-                case "-":
-                    ans = ((dop[0] - iop[0]) - (dop[1] - iop[1])) + "";
-                    break;
+                }
+                if (conc){
+                    ans = (operandos[0].toString() + operandos[1].toString());
+                } else {
+                    ans = (dop[0] + iop[0] + dop[1] + iop[1]) + "";
+                }
+            } else if (ctx.TKN_MINUS() != null){
+                ans = ((dop[0] - iop[0]) - (dop[1] - iop[1])) + "";
             }
             return (T) ans;
         } else {
