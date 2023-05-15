@@ -11,7 +11,7 @@ public class Main {
         SmallBasicParser parser = new SmallBasicParser(tokens);
         ParseTree tree = parser.s();
 
-        MyVisitor loader = new MyVisitor();
+        MyVisitor loader = new MyVisitor(lexer, parser);
         loader.visit(tree);
     }
 }

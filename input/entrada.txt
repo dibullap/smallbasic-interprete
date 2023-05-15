@@ -1,1 +1,3 @@
-var = ("Hola" = "Hol")
+For j = 1 To 7
+    var = j + 1
+EndFor

@@ -2,9 +2,20 @@ import java.util.Iterator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.antlr.v4.runtime.*;
+//import org.antlr.v4.runtime.tree.*;
 
 public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
+
+    SmallBasicLexer lexer;
+    SmallBasicParser  parser;
     HashMap<String,Object> table = new HashMap<>();
+
+    public MyVisitor(SmallBasicLexer lexer, SmallBasicParser parser) {
+        this.lexer = lexer;
+        this.parser = parser;
+    }
+
     @Override
     public T visitS(SmallBasicParser.SContext ctx) {
         System.out.println("Soy S");
@@ -12,14 +23,95 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
     }
 
     @Override public T visitComandos(SmallBasicParser.ComandosContext ctx) { return visitChildren(ctx); }
-    @Override public T visitCondicional(SmallBasicParser.CondicionalContext ctx) { return visitChildren(ctx); }
-    @Override public T visitSinosi(SmallBasicParser.SinosiContext ctx) { return visitChildren(ctx); }
+    @Override public T visitCondicional(SmallBasicParser.CondicionalContext ctx) {
+        System.out.println("If ");
+        Boolean cnd = Boolean.parseBoolean(visitExpr(ctx.expr()).toString());
+        Boolean cnd2 = false;
 
-    @Override public T visitSino(SmallBasicParser.SinoContext ctx) { return visitChildren(ctx); }
+        if (ctx.expr() != null){
+            if (cnd) {
+                System.out.println("Entra al if ");
+                int n = ctx.comandos().size();
+                for (int i = 0; i < n; i++) {
+                    visitComandos(ctx.comandos(i));
+                }
+            } else if (ctx.sinosi().TKN_ELSEIF() != null){
+                cnd2 = Boolean.parseBoolean(visitSinosi(ctx.sinosi()).toString());
+                System.out.println(cnd2);
+            }
+            if ((ctx.sino().TKN_ELSE() != null) && (!cnd && !cnd2)){
+                System.out.println("Entra al else");
+                visitSino(ctx.sino());
 
-    @Override public T visitPara(SmallBasicParser.ParaContext ctx) { return visitChildren(ctx); }
+            }
+        }
 
-    @Override public T visitStep(SmallBasicParser.StepContext ctx) { return visitChildren(ctx); }
+        return null;
+    }
+    @Override public T visitSinosi(SmallBasicParser.SinosiContext ctx) {
+        System.out.println("ElseIf ");
+        Boolean cnd = Boolean.parseBoolean(visitExpr(ctx.expr()).toString());
+        System.out.println(cnd);
+        Boolean r = false;
+        if (cnd && (ctx.expr() != null)){
+            //System.out.println("Hola");
+            int n = ctx.comandos().size();
+            for (int i = 0; i < n; i++) {
+                visitComandos(ctx.comandos(i));
+            }
+            r = cnd;
+        } else {
+            r = false;
+        }
+
+        return (T) r;
+    }
+
+    @Override public T visitSino(SmallBasicParser.SinoContext ctx) {
+        System.out.println("Else");
+        int n = ctx.comandos().size();
+        for (int i = 0; i < n; i++){
+            visitComandos(ctx.comandos(i));
+        }
+        return null;
+    }
+    @Override public T visitPara(SmallBasicParser.ParaContext ctx) {
+        //System.out.println("Para");
+        String dcl = ctx.declaracion().expr().getText();
+        visitDeclaracion(ctx.declaracion());
+        String exp = ctx.expr().getText();
+        Double ini, fin, ste = 1.0;
+        ini = Double.parseDouble(visitExpr(ctx.declaracion().expr()).toString());
+        fin = Double.parseDouble(visitExpr(ctx.expr()).toString());
+        if (ctx.step().TKN_STEP() != null){
+            ste = Double.parseDouble(visitStep(ctx.step()).toString());
+        }
+        /*
+        if(visitStep(ctx.step()) != null){
+            if(table.get(visitStep(ctx.step())) != null){ ste = Integer.parseInt(table.get(visitStep(ctx.step())).toString()); }else{ ste = Integer.parseInt(visitStep(ctx.step()).toString());}
+        }*/
+        for(Double i=ini; i<fin; i=i+ste){
+            int n = ctx.comandos().size();
+            for (int j = 0; j < n; j++){
+                visitComandos(ctx.comandos(j));
+            }
+            table.put(ctx.declaracion().id().ID().getText(), i);
+        }
+        return null;
+    }
+
+
+
+
+    @Override public T visitStep(SmallBasicParser.StepContext ctx) {
+        if(ctx.TKN_STEP() != null){
+            Integer ste = null;
+            ste = Integer.parseInt(visitArit(ctx.arit()).toString());
+            return (T) ste;
+        }
+        return null;
+    }
+
 
     @Override public T visitMientras(SmallBasicParser.MientrasContext ctx) {
         System.out.println("While ");
@@ -108,9 +200,37 @@ public class MyVisitor<T> extends SmallBasicBaseVisitor<T> {
 
     @Override public T visitParametros2(SmallBasicParser.Parametros2Context ctx) { return visitChildren(ctx); }
 
-    @Override public T visitEtiqueta(SmallBasicParser.EtiquetaContext ctx) { return visitChildren(ctx); }
+    @Override public T visitEtiqueta(SmallBasicParser.EtiquetaContext ctx) {
+        String name = ctx.ID().getText();
+        Integer line = ctx.start.getLine();
+        table.put(name, line);
+        return null;
+    }
 
-    @Override public T visitGoto(SmallBasicParser.GotoContext ctx) { return visitChildren(ctx); }
+    @Override public T visitGoto(SmallBasicParser.GotoContext ctx) {
+        String etiqueta = ctx.ID().getText();
+        Object pos = table.get(etiqueta);
+        if (pos != null) {
+            Integer posicion = Integer.parseInt(pos.toString());
+
+             CharStream input = lexer.getInputStream();
+            SmallBasicLexer newLexer = new SmallBasicLexer(input);
+            newLexer.reset();
+            newLexer.setLine(posicion - 1);
+            CommonTokenStream tokens = new CommonTokenStream(newLexer);
+            SmallBasicParser newParser = new SmallBasicParser(tokens);
+            newParser.setErrorHandler(parser.getErrorHandler());
+            newParser.setTokenFactory(parser.getTokenFactory());
+            newParser.s();
+        } else {
+            int line = ctx.ID().getSymbol().getLine();
+            int col = ctx.ID().getSymbol().getCharPositionInLine()+1;
+
+            System.err.printf("<%d:%d> Error semantico: La etiqueta  \"" + ctx.ID().getText()  + "\" no existe.\n", line, col);
+            System.exit(-1);
+        }
+        return null;
+    }
 
     @Override public T visitExpr(SmallBasicParser.ExprContext ctx) {
         //System.out.println("E1 or: " + ctx.getText());
